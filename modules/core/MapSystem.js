@@ -283,7 +283,7 @@ export class MapSystem extends AbstractSystem {
         const checkIDs = edit.selectedIDs ?? [];
         const selectedIDs = checkIDs.filter(entityID => graph.hasEntity(entityID));
         if (selectedIDs.length) {
-          context.enter('select-osm', { selection: { osm: selectedIDs }} );
+          context.enter('select-osm', { selection: { osm: selectedIDs } });
         } else {
           context.enter('browse');
         }
@@ -500,8 +500,8 @@ export class MapSystem extends AbstractSystem {
     const r1 = t1.r;
 
     if (loc2 === undefined) loc2 = loc1;
-    if (z2 === undefined)   z2 = z1;
-    if (r2 === undefined)   r2 = r1;
+    if (z2 === undefined) z2 = z1;
+    if (r2 === undefined) r2 = r1;
 
     // Bounds and precision checks
     loc2[0] = numClamp(loc2[0] || 0, -180, 180);
@@ -545,8 +545,8 @@ export class MapSystem extends AbstractSystem {
     const r1 = t1.r;
 
     if (loc2 === undefined) loc2 = loc1;
-    if (z2 === undefined)   z2 = z1;
-    if (r2 === undefined)   r2 = r1;
+    if (z2 === undefined) z2 = z1;
+    if (r2 === undefined) r2 = r1;
 
     // Bounds and precision checks
     loc2[0] = numClamp(loc2[0] || 0, -180, 180);
@@ -656,7 +656,7 @@ export class MapSystem extends AbstractSystem {
     const gotEntity = (entity) => {
       const selectedIDs = context.selectedIDs();
       if (context.mode?.id !== 'select-osm' || !selectedIDs.includes(entityID)) {
-        context.enter('select-osm', { selection: { osm: [entity.id] }} );
+        context.enter('select-osm', { selection: { osm: [entity.id] } });
       }
 
       const currGraph = editor.staging.graph;  // may have changed by the time we get in here
@@ -688,25 +688,25 @@ export class MapSystem extends AbstractSystem {
 
 
   // convenience methods for zooming in and out
-  _zoomIn(delta)  { return this.setMapParams(undefined, ~~this.zoom() + delta, undefined, 250); }
+  _zoomIn(delta) { return this.setMapParams(undefined, ~~this.zoom() + delta, undefined, 250); }
   _zoomOut(delta) { return this.setMapParams(undefined, ~~this.zoom() - delta, undefined, 250); }
 
-  zoomIn()        { return this._zoomIn(1); }
+  zoomIn() { return this._zoomIn(1); }
   zoomInFurther() { return this._zoomIn(4); }
-  canZoomIn()     { return this.zoom() < MAX_Z; }
+  canZoomIn() { return this.zoom() < MAX_Z; }
 
-  zoomOut()        { return this._zoomOut(1); }
+  zoomOut() { return this._zoomOut(1); }
   zoomOutFurther() { return this._zoomOut(4); }
-  canZoomOut()     { return this.zoom() > MIN_Z; }
+  canZoomOut() { return this.zoom() > MIN_Z; }
 
-  centerZoom(loc2, z2, duration = 0)          { return this.setMapParams(loc2, z2, undefined, duration); }
+  centerZoom(loc2, z2, duration = 0) { return this.setMapParams(loc2, z2, undefined, duration); }
 
   // convenience methods for the above, but with easing
-  transformEase(t2, duration = 250)           { return this.transform(t2, duration); }
-  centerZoomEase(loc2, z2, duration = 250)    { return this.setMapParams(loc2, z2, undefined, duration); }
-  centerEase(loc2, duration = 250)            { return this.setMapParams(loc2, undefined, undefined, duration); }
-  zoomEase(z2, duration = 250)                { return this.setMapParams(undefined, z2, undefined, duration); }
-  fitEntitiesEase(entities, duration = 250)   { return this.fitEntities(entities, duration); }
+  transformEase(t2, duration = 250) { return this.transform(t2, duration); }
+  centerZoomEase(loc2, z2, duration = 250) { return this.setMapParams(loc2, z2, undefined, duration); }
+  centerEase(loc2, duration = 250) { return this.setMapParams(loc2, undefined, undefined, duration); }
+  zoomEase(z2, duration = 250) { return this.setMapParams(undefined, z2, undefined, duration); }
+  fitEntitiesEase(entities, duration = 250) { return this.fitEntities(entities, duration); }
 
 
   /**
@@ -757,8 +757,8 @@ export class MapSystem extends AbstractSystem {
     if (extent === undefined) {
       const headerY = 72;
       const footerY = 30;
-// Add 50px overscan experiment, see UISystem.js
-// Maybe find a nicer way to include overscan and view padding into places like this.
+      // Add 50px overscan experiment, see UISystem.js
+      // Maybe find a nicer way to include overscan and view padding into places like this.
       // const pad = 10;
       const pad = 70;
       const viewport = this.context.viewport;
@@ -810,8 +810,8 @@ export class MapSystem extends AbstractSystem {
    * @return zoom
    */
   trimmedExtentZoom(extent) {
-// Add 50px overscan experiment, see UISystem.js
-// Maybe find a nicer way to include overscan and view padding into places like this.
+    // Add 50px overscan experiment, see UISystem.js
+    // Maybe find a nicer way to include overscan and view padding into places like this.
     const trimW = 140;
     const trimH = 240;
     //const trimW = 40;
@@ -832,7 +832,6 @@ export class MapSystem extends AbstractSystem {
   }
   set highlightEdits(val) {
     if (this._highlightEdits === val) return;  // no change
-
     this._highlightEdits = val;
     this._renderer.scene.dirtyScene();
     this.immediateRedraw();

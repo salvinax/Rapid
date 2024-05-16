@@ -63,7 +63,7 @@ export function uiPresetIcon(context) {
   function renderVertexBorder(container) {
     const px = 60;
     const mid = px / 2;
-    const d = px * 2/3;
+    const d = px * 2 / 3;
 
     container
       .append('svg')
@@ -84,8 +84,8 @@ export function uiPresetIcon(context) {
   function renderAreaBorder(container, style) {
     const px = 60;
     const mid = px / 2;
-    const len = px * 2/3;
-    const c1 = (px-len) / 2;
+    const len = px * 2 / 3;
+    const c1 = (px - len) / 2;
     const c2 = c1 + len;
     const color = new Color(style.fill.color).toHex();
     const alpha = style.fill.alpha;
@@ -162,7 +162,7 @@ export function uiPresetIcon(context) {
       .attr('d', `M${x1} ${y} L${x2} ${y}`);
 
     const rVertex = 3;
-    [[x1-1, y], [x2+1, y]].forEach(([cx, cy]) => {
+    [[x1 - 1, y], [x2 + 1, y]].forEach(([cx, cy]) => {
       svg
         .append('circle')
         .attr('class', 'vertex')
@@ -208,8 +208,8 @@ export function uiPresetIcon(context) {
       .append('img')
       .attr('class', 'image-icon')
       .attr('src', imageURL)
-      .on('load', () => container.classed('showing-img', true) )
-      .on('error', () => container.classed('showing-img', false) );
+      .on('load', () => container.classed('showing-img', true))
+      .on('error', () => container.classed('showing-img', false));
   }
 
 
@@ -254,21 +254,21 @@ export function uiPresetIcon(context) {
     const showLine = isPreset && (geom === 'line');
     const showArea = isPreset && (geom === 'area');
     const showRoute = isPreset && (geom === 'route') && (p.id !== 'type/route');
-    const style = context.systems.styles.styleMatch(tags);
+    const style = context.systems.styles.styleMatch(tags, p.id);
 
     container
       .classed('showing-img', !!imageURL);
 
     // Render outline shape, if any
-    if (isCategory)   renderCategoryBorder(container, style);
+    if (isCategory) renderCategoryBorder(container, style);
     // if (showPoint)    renderPointBorder(container);        // not actually used
-    if (showVertex)   renderVertexBorder(container);
-    if (showArea)     renderAreaBorder(container, style);
-    if (showLine)     renderLine(container, style);
-    if (showRoute)    renderRoute(container);
+    if (showVertex) renderVertexBorder(container);
+    if (showArea) renderAreaBorder(container, style);
+    if (showLine) renderLine(container, style);
+    if (showRoute) renderRoute(container);
 
     // Render Icon
-    if (picon)  {
+    if (picon) {
       const isRaised = showLine || showRoute;                 // move the icon up a little
       const isShrunk = isCategory || showLine || showRoute;   // make it smaller
       const isRapidIcon = /^rapid-/.test(picon);
@@ -295,14 +295,14 @@ export function uiPresetIcon(context) {
   }
 
 
-  presetIcon.preset = function(val) {
+  presetIcon.preset = function (val) {
     if (!arguments.length) return _preset;
     _preset = val;
     return presetIcon;
   };
 
 
-  presetIcon.geometry = function(val) {
+  presetIcon.geometry = function (val) {
     if (!arguments.length) return _geometry;
     _geometry = val;
     return presetIcon;

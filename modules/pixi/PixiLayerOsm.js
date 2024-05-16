@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import geojsonRewind from '@mapbox/geojson-rewind';
 import { vecAngle, vecLength, vecInterp } from '@rapid-sdk/math';
+import deepEqual from 'fast-deep-equal';
 
 import { AbstractLayer } from './AbstractLayer.js';
 import { PixiFeatureLine } from './PixiFeatureLine.js';
@@ -24,13 +25,14 @@ export class PixiLayerOsm extends AbstractLayer {
   constructor(scene, layerID) {
     super(scene, layerID);
     this.enabled = true;   // OSM layers should be enabled by default
+    this.mode = true;
 
     const basemapContainer = this.scene.groups.get('basemap');
     this._resolved = new Map();  // Map (entity.id -> GeoJSON feature)
 
-// experiment for benchmarking
-//    this._alreadyDownloaded = false;
-//    this._saveCannedData = false;
+    // experiment for benchmarking
+    //    this._alreadyDownloaded = false;
+    //    this._saveCannedData = false;
 
     const areas = new PIXI.Container();
     areas.name = `${this.layerID}-areas`;
@@ -78,31 +80,31 @@ export class PixiLayerOsm extends AbstractLayer {
   }
 
 
-// experiment for benchmarking
-//  /**
-//   * downloadFile
-//   * experiment for benchmarking
-//   * @param  data
-//   * @param  fileName
-//   */
-//  _downloadFile(data, fileName) {
-//    let a = document.createElement('a');   // Create an invisible A element
-//    a.style.display = 'none';
-//    document.body.appendChild(a);
-//
-//    // Set the HREF to a Blob representation of the data to be downloaded
-//    a.href = window.URL.createObjectURL(new Blob([data]));
-//
-//    // Use download attribute to set set desired file name
-//    a.setAttribute('download', fileName);
-//
-//    // Trigger the download by simulating click
-//    a.click();
-//
-//    // Cleanup
-//    window.URL.revokeObjectURL(a.href);
-//    document.body.removeChild(a);
-//  }
+  // experiment for benchmarking
+  //  /**
+  //   * downloadFile
+  //   * experiment for benchmarking
+  //   * @param  data
+  //   * @param  fileName
+  //   */
+  //  _downloadFile(data, fileName) {
+  //    let a = document.createElement('a');   // Create an invisible A element
+  //    a.style.display = 'none';
+  //    document.body.appendChild(a);
+  //
+  //    // Set the HREF to a Blob representation of the data to be downloaded
+  //    a.href = window.URL.createObjectURL(new Blob([data]));
+  //
+  //    // Use download attribute to set set desired file name
+  //    a.setAttribute('download', fileName);
+  //
+  //    // Trigger the download by simulating click
+  //    a.click();
+  //
+  //    // Cleanup
+  //    window.URL.revokeObjectURL(a.href);
+  //    document.body.removeChild(a);
+  //  }
 
 
   /**
@@ -156,29 +158,29 @@ export class PixiLayerOsm extends AbstractLayer {
       }
     }
 
-// experiment for benchmarking
-//    // Instructions to save 'canned' entity data for use in the renderer test suite:
-//    // Set a breakpoint at the next line, then modify `this._saveCannedData` to be 'true'
-//    // continuing will fire off the download of the data into a file called 'canned_data.json'.
-//    // move the data into the test/spec/renderer directory.
-//    if (this._saveCannedData && !this._alreadyDownloaded) {
-//      const [lng, lat] = map.center();
-//
-//      let viewData = {
-//        'lng': lng,
-//        'lat': lat,
-//        'zoom': zoom,
-//        'width': window.innerWidth,
-//        'height': window.innerHeight,
-//        'viewport': viewport,
-//        'data': data,
-//        'entities': graph.base.entities   // TODO convert from Map to Object if we are keeping this)
-//      };
-//
-//      let cannedData = JSON.stringify(viewData);
-//      this._downloadFile(cannedData,`${zoom}_${lat}_${lng}_canned_osm_data.json`);
-//      this._alreadyDownloaded = true;
-//    }
+    // experiment for benchmarking
+    //    // Instructions to save 'canned' entity data for use in the renderer test suite:
+    //    // Set a breakpoint at the next line, then modify `this._saveCannedData` to be 'true'
+    //    // continuing will fire off the download of the data into a file called 'canned_data.json'.
+    //    // move the data into the test/spec/renderer directory.
+    //    if (this._saveCannedData && !this._alreadyDownloaded) {
+    //      const [lng, lat] = map.center();
+    //
+    //      let viewData = {
+    //        'lng': lng,
+    //        'lat': lat,
+    //        'zoom': zoom,
+    //        'width': window.innerWidth,
+    //        'height': window.innerHeight,
+    //        'viewport': viewport,
+    //        'data': data,
+    //        'entities': graph.base.entities   // TODO convert from Map to Object if we are keeping this)
+    //      };
+    //
+    //      let cannedData = JSON.stringify(viewData);
+    //      this._downloadFile(cannedData,`${zoom}_${lat}_${lng}_canned_osm_data.json`);
+    //      this._alreadyDownloaded = true;
+    //    }
 
     this.renderPolygons(frame, viewport, zoom, data);
     this.renderLines(frame, viewport, zoom, data);
@@ -241,6 +243,9 @@ export class PixiLayerOsm extends AbstractLayer {
     }
   }
 
+  isHighlightChecked() {
+    return context.systems.map.highlightEdits;
+  }
 
   /**
    * renderPolygons
@@ -253,6 +258,7 @@ export class PixiLayerOsm extends AbstractLayer {
     const entities = data.polygons;
     const context = this.context;
     const graph = context.systems.editor.staging.graph;
+    const baseGraph = context.systems.editor.base.graph;
     const l10n = context.systems.l10n;
     const presets = context.systems.presets;
     const styles = context.systems.styles;
@@ -333,7 +339,7 @@ export class PixiLayerOsm extends AbstractLayer {
         if (feature.dirty) {
           const preset = presets.match(entity, graph);
 
-          const style = styles.styleMatch(entity.tags);
+          const style = styles.styleMatch(entity.tags, entityID);
           style.labelTint = style.fill.color ?? style.stroke.color ?? 0xeeeeee;
           feature.style = style;
 
@@ -388,6 +394,16 @@ export class PixiLayerOsm extends AbstractLayer {
               markerStyle.markerName = 'boldPin';
               markerStyle.markerTint = 0xdddddd;
             }
+
+            const graph = context.systems.editor.staging.graph;
+            const baseGraph = context.systems.editor.base.graph;
+            const h = graph.hasEntity(entityID);
+            const b = baseGraph.hasEntity(entityID);
+
+            if (h.tags && b.tags && !deepEqual(h.tags, b.tags) && this.isHighlightChecked() === true) {
+              markerStyle.markerTint = 0x57c92c;
+            }
+
             poiFeature.style = markerStyle;
             poiFeature.label = feature.label;
           }
@@ -414,8 +430,8 @@ export class PixiLayerOsm extends AbstractLayer {
     const graph = context.systems.editor.staging.graph;
     const l10n = context.systems.l10n;
     const styles = context.systems.styles;
-    const lineContainer = this.lineContainer;
 
+    const lineContainer = this.lineContainer;
     for (const [entityID, entity] of entities) {
       const layer = (typeof entity.layer === 'function') ? entity.layer() : 0;
       const levelContainer = _getLevelContainer(layer.toString());
@@ -438,7 +454,7 @@ export class PixiLayerOsm extends AbstractLayer {
 
       const parts = (geojson.type === 'LineString') ? [[geojson.coordinates]]
         : (geojson.type === 'Polygon') ? [geojson.coordinates]
-        : (geojson.type === 'MultiPolygon') ? geojson.coordinates : [];
+          : (geojson.type === 'MultiPolygon') ? geojson.coordinates : [];
 
       for (let i = 0; i < parts.length; ++i) {
         const segments = parts[i];
@@ -488,8 +504,7 @@ export class PixiLayerOsm extends AbstractLayer {
                 geom = 'area';
               }
             }
-
-            const style = styles.styleMatch(tags);
+            const style = styles.styleMatch(tags, entityID);
             // Todo: handle alternating/two-way case too
             if (geom === 'line') {
               style.lineMarkerName = entity.isOneWay() ? 'oneway' : '';
@@ -541,7 +556,6 @@ export class PixiLayerOsm extends AbstractLayer {
     const graph = context.systems.editor.staging.graph;
     const l10n = context.systems.l10n;
     const presets = context.systems.presets;
-
     // Vertices related to the selection/hover should be drawn above everything
     const mapUIContainer = this.scene.layers.get('map-ui').container;
     const selectedContainer = mapUIContainer.getChildByName('selected');
@@ -555,11 +569,16 @@ export class PixiLayerOsm extends AbstractLayer {
       return related.descendantIDs.has(entityID) || related.siblingIDs.has(entityID);
     }
 
+    // function tagEdit(entityID) {
+    //   // If not in base graph, it's new geometry
+    //   if (!base.entities[entityID]) || !
+    // }
+
 
     for (const [nodeID, node] of entities) {
       let parentContainer = null;
 
-      if (zoom >= 16 && isInterestingVertex(node) ) {  // minor importance
+      if (zoom >= 16 && isInterestingVertex(node)) {  // minor importance
         parentContainer = pointsContainer;
       }
       if (isRelatedVertex(nodeID)) {   // major importance
@@ -625,6 +644,21 @@ export class PixiLayerOsm extends AbstractLayer {
           markerStyle.iconTint = 0x111111;
           markerStyle.labelTint = 0xbbbbbb;
           markerStyle.markerTint = 0xbbbbbb;
+        }
+
+        // Vertex-related visual diffs
+        const styles = context.systems.styles;
+        const edit = styles.findEditType(nodeID);
+        // context.systems.editor.difference();
+        if (this.isHighlightChecked() === true && edit.geometry === true) {
+          markerStyle.iconTint = 0x111111;
+          markerStyle.markerTint = 0x90ee90;
+          markerStyle.markerName = 'largeCircle';
+        }
+        if (this.isHighlightChecked() === true && edit.properties === true && !edit?.geometry) {
+          markerStyle.markerTint = 'black';
+          markerStyle.iconTint = 'white';
+          markerStyle.markerName = 'largeCircle';
         }
 
         feature.style = markerStyle;
@@ -714,12 +748,17 @@ export class PixiLayerOsm extends AbstractLayer {
 
         feature.style = markerStyle;
         feature.label = l10n.displayName(node.tags);
+
+
       }
 
       feature.update(viewport, zoom);
       this.retainFeature(feature, frame);
     }
   }
+
+
+
 
 
   /**
@@ -829,6 +868,8 @@ export class PixiLayerOsm extends AbstractLayer {
 
   }
 
+
+
 }
 
 
@@ -865,3 +906,5 @@ function hasWikidata(entity) {
     entity.tags['operator:wikidata']
   );
 }
+
+

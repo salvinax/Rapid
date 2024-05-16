@@ -120,7 +120,7 @@ export function uiMap3dViewer(context) {
           for (let node of buildingEnt.nodes) {
             const parents = graph.parentWays(graph.hasEntity(node));
             for (let way of parents) {
-              if (way.tags['building:part'] && geomPolygonContainsPolygon(buildingEnt.nodes.map(n => graph.hasEntity(n).loc ), way.nodes.map(n => graph.hasEntity(n).loc ) )) {
+              if (way.tags['building:part'] && geomPolygonContainsPolygon(buildingEnt.nodes.map(n => graph.hasEntity(n).loc), way.nodes.map(n => graph.hasEntity(n).loc))) {
                 touchesBuildingPart = true;
                 break;
               }
@@ -142,8 +142,8 @@ export function uiMap3dViewer(context) {
               : 0,
             height: parseFloat(
               buildingEnt.tags.height ||
-                buildingEnt.tags['building:levels'] * 3 ||
-                0
+              buildingEnt.tags['building:levels'] * 3 ||
+              0
             ),
           },
           geometry: gj,
@@ -172,7 +172,7 @@ export function uiMap3dViewer(context) {
         let gj = areaEnt.asGeoJSON(editor.staging.graph);
         if (gj.type !== 'Polygon' && gj.type !== 'MultiPolygon') continue;
 
-        const style = styles.styleMatch(areaEnt.tags);
+        const style = styles.styleMatch(areaEnt.tags, areaEnt.id);
         const fillColor = new Color(style.fill.color).toHex();
         const strokeColor = new Color(style.stroke.color).toHex();
 
@@ -209,7 +209,7 @@ export function uiMap3dViewer(context) {
         const gj = roadEnt.asGeoJSON(editor.staging.graph);
         if (gj.type !== 'LineString') continue;
 
-        const style = styles.styleMatch(roadEnt.tags);
+        const style = styles.styleMatch(roadEnt.tags, roadEnt.id);
         const casingColor = new Color(style.casing.color).toHex();
         const strokeColor = new Color(style.stroke.color).toHex();
 

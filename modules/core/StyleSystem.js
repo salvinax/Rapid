@@ -1,5 +1,9 @@
+/* eslint-disable complexity */
 import { AbstractSystem } from './AbstractSystem.js';
 import { osmPavedTags } from '../osm/tags.js';
+import deepEqual from 'fast-deep-equal';
+import { vecEqual } from '@rapid-sdk/math';
+import element from '@mapbox/sexagesimal';
 
 
 const roadVals = new Set([
@@ -33,30 +37,30 @@ export class StyleSystem extends AbstractSystem {
     super(context);
     this.id = 'styles';
     this.context = context;
-    this.dependencies = new Set(['dataloader']);
+    this.dependencies = new Set(['dataloader', 'editor', 'map']);
     this.autoStart = true;
 
     // Experiment, see Rapid#1230
     // matrix values from https://github.com/maputnik/editor
     this.protanopiaMatrix = [
-      0.567,  0.433,  0,     0,  0,
-      0.558,  0.442,  0,     0,  0,
-      0,      0.242,  0.758, 0,  0,
-      0,      0,      0,     1,  0
+      0.567, 0.433, 0, 0, 0,
+      0.558, 0.442, 0, 0, 0,
+      0, 0.242, 0.758, 0, 0,
+      0, 0, 0, 1, 0
     ];
 
     this.deuteranopiaMatrix = [
-      0.625,  0.375,  0,     0,  0,
-      0.7,    0.3,    0,     0,  0,
-      0,      0.3,    0.7,   0,  0,
-      0,      0,      0,     1,  0
+      0.625, 0.375, 0, 0, 0,
+      0.7, 0.3, 0, 0, 0,
+      0, 0.3, 0.7, 0, 0,
+      0, 0, 0, 1, 0
     ];
 
     this.tritanopiaMatrix = [
-      0.95,   0.05,   0,     0,  0,
-      0,      0.433,  0.567, 0,  0,
-      0,      0.475,  0.525, 0,  0,
-      0,      0,      0,     1,  0
+      0.95, 0.05, 0, 0, 0,
+      0, 0.433, 0.567, 0, 0,
+      0, 0.475, 0.525, 0, 0,
+      0, 0, 0, 1, 0
     ];
 
 
@@ -88,7 +92,7 @@ export class StyleSystem extends AbstractSystem {
 
     this.STYLE_DECLARATIONS = {
       DEFAULTS: {
-        fill:   { width: 2, color: 0xaaaaaa, alpha: 0.3 },
+        fill: { width: 2, color: 0xaaaaaa, alpha: 0.3 },
         casing: { width: 5, color: 0x444444, alpha: 1, cap: 'round', join: 'round' },
         stroke: { width: 3, color: 0xcccccc, alpha: 1, cap: 'round', join: 'round' }
       },
@@ -216,17 +220,17 @@ export class StyleSystem extends AbstractSystem {
         stroke: { width: 3, color: 0x81d25c, dash: [3, 3], cap: 'butt' }
       },
       river: {
-        fill:   { color: 0x77d4de, alpha: 0.3 },   // rgb(119, 211, 222)
+        fill: { color: 0x77d4de, alpha: 0.3 },   // rgb(119, 211, 222)
         casing: { width: 10, color: 0x444444 },
         stroke: { width: 8, color: 0x77dddd }
       },
       stream: {
-        fill:   { color: 0x77d4de, alpha: 0.3 },   // rgb(119, 211, 222)
+        fill: { color: 0x77d4de, alpha: 0.3 },   // rgb(119, 211, 222)
         casing: { width: 7, color: 0x444444 },
         stroke: { width: 5, color: 0x77dddd }
       },
       ridge: {
-        stroke: { width: 2, color: 0x8cd05f}  // rgb(140, 208, 95)
+        stroke: { width: 2, color: 0x8cd05f }  // rgb(140, 208, 95)
       },
       runway: {
         casing: { width: 10, color: 0x000000, cap: 'butt' },
@@ -261,7 +265,7 @@ export class StyleSystem extends AbstractSystem {
         stroke: { width: 3, color: 0xdddddd, dash: [10, 5, 2, 5], cap: 'round' }
       },
       barrier_hedge: {
-        fill:   { color: 0x8cd05f, alpha: 0.3 },   // rgb(140, 208, 95)
+        fill: { color: 0x8cd05f, alpha: 0.3 },   // rgb(140, 208, 95)
         casing: { alpha: 0 },  // disable
         stroke: { width: 3, color: 0x8cd05f, dash: [10, 5, 2, 5], cap: 'round' }
       },
@@ -270,7 +274,7 @@ export class StyleSystem extends AbstractSystem {
         stroke: { width: 5, color: 0x8cd05f }
       },
       construction: {
-        casing: { width: 10, color: 0xffffff},
+        casing: { width: 10, color: 0xffffff },
         stroke: { width: 8, color: 0xfc6c14, dash: [10, 10], cap: 'butt' }
       },
       pipeline: {
@@ -553,6 +557,7 @@ export class StyleSystem extends AbstractSystem {
 
 
     this.styleMatch = this.styleMatch.bind(this);
+    this.findEditType = this.findEditType.bind(this);
   }
 
 
@@ -561,10 +566,10 @@ export class StyleSystem extends AbstractSystem {
    * Called after all core objects have been constructed.
    * @return {Promise} Promise resolved when this component has completed initialization
    */
-  initAsync(){
+  initAsync() {
     for (const id of this.dependencies) {
       if (!this.context.systems[id]) {
-          return Promise.reject(`Cannot init: ${this.id} requires ${id}`);
+        return Promise.reject(`Cannot init: ${this.id} requires ${id}`);
       }
     }
     return Promise.resolve();
@@ -590,21 +595,94 @@ export class StyleSystem extends AbstractSystem {
     return Promise.resolve();
   }
 
+  findEditType(id) {
+    let changeType = {};
+    const graph = context.systems.editor.staging.graph;
+    const baseGraph = context.systems.editor.base.graph;
+    const h = graph.hasEntity(id);
+    const b = baseGraph.hasEntity(id);
 
+    changeType = {};
+
+    if (b && !h) {
+      changeType.deletion = true;
+    }
+
+    // addition
+    if (!b && h) {
+      changeType.geometry = true;
+    }
+
+    if (h && b) {
+      if (h.members && b.members && !deepEqual(h.members, b.members)) {
+        changeType.geometry = true;
+        changeType.properties = true;
+      }
+
+      if (h.loc && b.loc && !vecEqual(h.loc, b.loc)) {
+        changeType.geometry = true;
+      }
+
+      if (h.nodes && b.nodes && !deepEqual(h.nodes, b.nodes)) {
+        changeType.geometry = true;
+      }
+
+      if (h.tags && b.tags && !deepEqual(h.tags, b.tags)) {
+        changeType.properties = true;
+      }
+    }
+
+    return changeType;
+  }
+
+  isHighlightChecked() {
+    return context.systems.map.highlightEdits;
+  }
   /**
    * styleMatch
    * @param  {Object}  tags - OSM tags to match to a display style
    * @return {Object}  Styling info for the given tags
    */
-  styleMatch(tags) {
-    const defaults = this.STYLE_DECLARATIONS.DEFAULTS;
+  styleMatch(tags, elementId) {
+    const graph = context.systems.editor.staging.graph;
+    const baseGraph = context.systems.editor.base.graph;
+    // const edits = context.systems.editor.difference();
+    // const changes = edits.changeType[elementId];
+    // console.log(edits);
 
+    let changes = {};
+    if (this.isHighlightChecked() === true) {
+      if (elementId.charAt(0) === 'w') {
+        //array of nodes
+        const h = graph.hasEntity(elementId);
+        const b = baseGraph.hasEntity(elementId);
+
+        if (h.tags && b.tags && !deepEqual(h.tags, b.tags)) {
+          changes.properties = true;
+        }
+
+        h.nodes.forEach(nodeId => {
+          const nodeChanges = this.findEditType(nodeId);
+          if (!changes.hasOwnProperty('properties') && nodeChanges.properties) {
+            changes.properties = nodeChanges.properties;
+          }
+          if (!changes.hasOwnProperty('geometry') && nodeChanges.geometry) {
+            changes.geometry = nodeChanges.geometry;
+          }
+        });
+      } else {
+        changes = this.findEditType(elementId);
+      }
+    }
+
+
+    const defaults = this.STYLE_DECLARATIONS.DEFAULTS;
     let matched = defaults;
     let styleScore = 999;   // lower numbers are better
-// eventually expose this to the caller?
-// it may be useful to know what `k=v` pair matched
+    // eventually expose this to the caller?
+    // it may be useful to know what `k=v` pair matched
     let styleKey;           // the key controlling the styling, if any
-//    let styleVal;           // the value controlling the styling, if any
+    //    let styleVal;           // the value controlling the styling, if any
 
     // First, match the tags to the best matching `styleID`..
     for (const [k, v] of Object.entries(tags)) {
@@ -628,7 +706,7 @@ export class StyleSystem extends AbstractSystem {
         matched = declaration;
         styleScore = score;
         styleKey = k;
-//        styleVal = v;
+        //        styleVal = v;
 
         if (styleScore === 1) break;  // no need to keep looking at tags
       }
@@ -645,14 +723,14 @@ export class StyleSystem extends AbstractSystem {
         hasLifecycleTag = true;
         break;
 
-      // Lifecycle value, e.g. `railway=demolished`
-      // (applies only if `k` is styleKey or there is no styleKey controlling styling)
+        // Lifecycle value, e.g. `railway=demolished`
+        // (applies only if `k` is styleKey or there is no styleKey controlling styling)
       } else if ((!styleKey || k === styleKey) && lifecycleVals.has(v)) {
         hasLifecycleTag = true;
         break;
 
-      // Lifecycle key prefix, e.g. `demolished:railway=rail`
-      // (applies only if there is no styleKey controlling the styling)
+        // Lifecycle key prefix, e.g. `demolished:railway=rail`
+        // (applies only if there is no styleKey controlling the styling)
       } else if (!styleKey && lifecycleRegex.test(k) && v !== 'no') {
         hasLifecycleTag = true;
         break;
@@ -723,6 +801,39 @@ export class StyleSystem extends AbstractSystem {
       }
     }
 
+    // If both are true, the geometry class supersedes the properties class
+    if (changes?.geometry === true && this.isHighlightChecked() === true) {
+
+      //building - make it geom = area
+      if (styleKey === 'building' || styleKey === 'leisure') {
+        style.fill.color = 0x57c92c;
+      }
+
+      //building - make it geom = line
+      if (styleKey === 'highway') {
+        style.stroke.color = 0x57c92c;
+        style.stroke.width = 10;
+      }
+    }
+    if (changes?.properties === true && this.isHighlightChecked() === true && !changes?.geometry) {
+
+      // building make it geom = area
+      if (styleKey === 'building' || styleKey === 'leisure') {
+        style.stroke.width = 10;
+        style.stroke.dash = [4, 4];
+        style.stroke.color = 0x57c92c;
+        style.fill.color = 0x57c92c;
+      }
+
+      // ways make it geom = line later!!!
+      if (styleKey === 'highway') {
+        style.casing.color = 0x57c92c;
+        style.casing.width += 12;
+      }
+    }
+
+
+
 
     // Finally look for fill pattern..
     if (building) return style;   // exception: don't apply patterns to buildings
@@ -735,6 +846,8 @@ export class StyleSystem extends AbstractSystem {
         return style;
       }
     }
+
+
 
     // Match the tags to the best matching `patternID`..
     let patternScore = 999;
@@ -764,5 +877,6 @@ export class StyleSystem extends AbstractSystem {
     function getTag(tags, key) {
       return tags[key] === 'no' ? undefined : tags[key];
     }
+
   }
 }
